@@ -21,7 +21,7 @@ import java.io.File
  * A subtrait of GraphReader that reads files of names specified by prefix
  * and containing directory.
  */
-trait GraphReaderFromDirectory extends GraphReader {
+trait GraphReaderFromDirectory[T] extends GraphReader[T] {
   /**
    * Directory name to read files from
    */
@@ -42,7 +42,12 @@ trait GraphReaderFromDirectory extends GraphReader {
    */
   def iteratorSeq: Seq[() => Iterator[NodeIdEdgesMaxId]] = {
     val dir = new File(directory)
-    val validFiles = dir.list().flatMap({ filename =>
+    val filesInDir = dir.list()
+    if (filesInDir == null) {
+      throw new Exception("Current directory is " + System.getProperty("user.dir") +
+        " and nothing was found in dir " + dir)
+    }
+    val validFiles = filesInDir.flatMap({ filename =>
       if (filename.startsWith(prefixFileNames)) {
         Some(filename)
       }

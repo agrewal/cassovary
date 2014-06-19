@@ -15,13 +15,13 @@
 /**
  * Generates a directed Erdos-Renyi random graph file with n log(n) edges 
  * and node ids distributed uniformly throughout the space of 0..MaxNodeId. 
- * Loads the graph file both with a SequentialNodeRenumberer and without,
+ * Loads the graph file both with a SequentialNodeNumberer and without,
  * and compares approximate representation sizes of the two.
  */
 
 import com.google.common.util.concurrent.MoreExecutors
 import com.twitter.cassovary.util.io.AdjacencyListGraphReader
-import com.twitter.cassovary.util.SequentialNodeRenumberer
+import com.twitter.cassovary.util.{Sampling, SequentialNodeNumberer}
 import com.twitter.cassovary.graph.TestGraphs
 import java.io.{File,PrintWriter}
 import scala.math
@@ -36,10 +36,11 @@ object RenumberedGraph {
 
     printf("Generating Erdos-Renyi random graph with n=%d nodes and log(n)=%d avg outdegree...\n", numNodes, avgOutDegree)
     // Generate mapping of each node id to a random integer in the space 0..MaxNodeId.
-    var rng = new Random()
-    val nodeIds = Array.fill(numNodes) { math.abs(rng.nextInt(MaxNodeId)) }
+    val rng = new Random()
+    val nodeIds = Sampling.randomSubset(numNodes, 0 to MaxNodeId, rng)
 
-    val genGraph = TestGraphs.generateRandomGraph(numNodes, avgOutDegree)
+    val genGraph = TestGraphs.generateRandomGraph(numNodes,
+      TestGraphs.getProbEdgeRandomDirected(numNodes, avgOutDegree))
 
     // Write graph to temporary file, mapping all node ids from dense to sparse representation.
     val renumGraphDirName = System.getProperty("java.io.tmpdir")
@@ -57,7 +58,8 @@ object RenumberedGraph {
     gWriter.close()
 
     // Read graph file into memory with renumbering.
-    val readGraph = new AdjacencyListGraphReader(renumGraphDirName, renumGraphFileName, new SequentialNodeRenumberer()) {
+    val readGraph = new AdjacencyListGraphReader[Int](renumGraphDirName, renumGraphFileName,
+      new SequentialNodeNumberer[Int](), _.toInt) {
       override val executorService = MoreExecutors.sameThreadExecutor()
     }.toArrayBasedDirectedGraph()
 
@@ -67,7 +69,8 @@ object RenumberedGraph {
     printf("First 3 nodes of renumbered graph: %s\n", readGraph.toString(3))
 
     // Read graph file into memory without renumbering.
-    val readGraph2 = new AdjacencyListGraphReader(renumGraphDirName, renumGraphFileName) {
+    val readGraph2 = new AdjacencyListGraphReader[Int](renumGraphDirName, renumGraphFileName,
+      new SequentialNodeNumberer[Int](), _.toInt) {
       override val executorService = MoreExecutors.sameThreadExecutor()
     }.toArrayBasedDirectedGraph()
     val rg2Complexity = readGraph2.approxStorageComplexity

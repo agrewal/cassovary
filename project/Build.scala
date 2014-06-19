@@ -7,7 +7,7 @@ import SonatypeKeys._
 object Cassovary extends Build {
 
   val sharedSettings = Seq(
-    version := "3.3.0",
+    version := "3.3.1",
     organization := "com.twitter",
     scalaVersion := "2.9.3",
     retrieveManaged := true,
@@ -41,6 +41,10 @@ object Cassovary extends Build {
 
     javacOptions ++= Seq("-source", "1.6", "-target", "1.6"),
     javacOptions in doc := Seq("-source", "1.6"),
+
+    fork in run := true,
+    javaOptions in run ++= Seq("-server"),
+    outputStrategy := Some(StdoutOutput),
 
     // Sonatype publishing
     publishArtifact in Test := false,
@@ -85,8 +89,8 @@ object Cassovary extends Build {
     base = file("."),
     settings = Project.defaultSettings ++ sharedSettings ++ sonatypeSettings
   ).aggregate(
-      cassovaryCore, cassovaryExamples
-    )
+      cassovaryCore, cassovaryExamples, cassovaryBenchmarks
+  )
 
   lazy val cassovaryCore = Project(
     id = "cassovary-core",
